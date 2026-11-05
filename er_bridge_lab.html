@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#070b18">
+<title>ER BRIDGE · Einstein–Rosen Bridge Lab</title>
+<style>
+:root{--bg:#070b18;--panel:rgba(16,24,47,.82);--line:rgba(145,174,255,.2);--text:#edf3ff;--muted:#9aacca;--cyan:#65e5ff;--violet:#b79aff;--gold:#ffd68a}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(ellipse at 50% 15%,#17264a 0,#0a1024 42%,#050812 100%);color:var(--text);font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;min-height:100vh}
+header{padding:22px 20px 12px;max-width:1200px;margin:auto}
+.eyebrow{font-size:11px;letter-spacing:.22em;color:var(--cyan);font-weight:800}
+h1{font-size:clamp(25px,5vw,43px);margin:7px 0 4px;letter-spacing:.04em}
+.sub{color:var(--muted);font-size:13px;line-height:1.6}
+main{max-width:1200px;margin:auto;padding:10px 16px 30px;display:grid;grid-template-columns:minmax(0,1.65fr) minmax(280px,.8fr);gap:14px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:18px;overflow:hidden;box-shadow:0 16px 50px #0005;backdrop-filter:blur(12px)}
+.stage{position:relative;min-height:440px}
+canvas{display:block;width:100%;height:100%;min-height:440px;touch-action:pan-y}
+.hud{position:absolute;left:15px;top:14px;display:flex;gap:7px;flex-wrap:wrap;pointer-events:none}
+.pill{font-size:10px;letter-spacing:.08em;padding:7px 10px;border:1px solid #8caeff44;border-radius:30px;background:#091329bb;color:#cfe5ff}
+.pill.live{color:#8effe2;border-color:#62e9c766}
+.stage-note{position:absolute;bottom:13px;left:15px;right:15px;text-align:center;color:#c1d2ef;font-size:11px;text-shadow:0 2px 8px #000;pointer-events:none}
+.side{padding:18px}
+h2{font-size:14px;letter-spacing:.1em;margin:0 0 14px;color:#d9e6ff}
+.control{margin:17px 0}
+.control-head{display:flex;justify-content:space-between;gap:10px;font-size:12px;color:#c6d5ef;margin-bottom:9px}
+output{color:var(--cyan);font-variant-numeric:tabular-nums}
+input[type=range]{width:100%;accent-color:#75dfff}
+.buttons{display:flex;gap:8px;margin-top:15px}
+button{border:1px solid #8dbaff55;background:#17284b;color:#e8f4ff;border-radius:10px;padding:10px 12px;font-weight:700;font-size:12px;cursor:pointer}
+button:active{transform:scale(.98)}
+button.primary{background:linear-gradient(110deg,#176b87,#554a9e);border:0}
+.info{padding:15px 16px;border-top:1px solid var(--line)}
+.info h3{font-size:13px;margin:0 0 7px;color:var(--gold)}
+.info p{font-size:12px;line-height:1.7;color:#b7c6df;margin:0}
+.legend{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}
+.legend div{font-size:11px;color:#c4d3ec;display:flex;align-items:center;gap:7px}
+.dot{width:9px;height:9px;border-radius:50%;display:inline-block}
+.bottom{max-width:1200px;margin:0 auto;padding:0 16px 30px}
+.note{background:#101a31;border:1px solid #e5bd7040;border-radius:14px;padding:14px 16px;color:#c6d3e8;font-size:12px;line-height:1.7}
+.note strong{color:#ffdc9a}
+@media(max-width:780px){main{grid-template-columns:1fr}.stage,canvas{min-height:390px}.side{padding:16px}.stage{min-height:390px}}
+</style>
+</head>
+<body>
+<header>
+  <div class="eyebrow">COSMOS LAB · GENERAL RELATIVITY</div>
+  <h1>ER BRIDGE <span style="color:var(--cyan)">/</span> 로젠 다리</h1>
+  <div class="sub">아인슈타인–로젠 다리의 시공간 구조를 탐구하는 인터랙티브 3D 모형</div>
+</header>
+<main>
+  <section class="panel stage">
+    <canvas id="space"></canvas>
+    <div class="hud"><span class="pill live">● SIMULATION RUNNING</span><span class="pill">2 ASYMPTOTIC REGIONS</span><span class="pill">EMBEDDING DIAGRAM</span></div>
+    <div class="stage-note">화면을 드래그해 시점을 회전하고, 두 손가락 또는 휠로 확대·축소해 보세요.</div>
+  </section>
+  <aside class="panel">
+    <div class="side">
+      <h2>실험 변수 / CONTROLS</h2>
+      <div class="control">
+        <div class="control-head"><label for="throat">목의 폭 (Throat radius)</label><output id="throatVal">1.00</output></div>
+        <input id="throat" type="range" min=".55" max="1.65" value="1" step=".05">
+      </div>
+      <div class="control">
+        <div class="control-head"><label for="curve">공간 휘어짐 (Curvature)</label><output id="curveVal">1.00</output></div>
+        <input id="curve" type="range" min=".55" max="1.8" value="1" step=".05">
+      </div>
+      <div class="control">
+        <div class="control-head"><label for="speed">입자 이동 속도</label><output id="speedVal">1.0×</output></div>
+        <input id="speed" type="range" min=".2" max="2.5" value="1" step=".1">
+      </div>
+      <div class="buttons">
+        <button class="primary" id="toggle">일시정지</button>
+        <button id="reset">시점 초기화</button>
+      </div>
+      <div class="legend">
+        <div><i class="dot" style="background:#65e5ff"></i> 위쪽 우주 영역</div>
+        <div><i class="dot" style="background:#b79aff"></i> 아래쪽 우주 영역</div>
+        <div><i class="dot" style="background:#ffd68a"></i> 웜홀 목</div>
+        <div><i class="dot" style="background:#fff"></i> 빛 입자 경로 예시</div>
+      </div>
+    </div>
+    <div class="info">
+      <h3>01 · 무엇을 보고 있을까?</h3>
+      <p>이 모형은 두 개의 공간 영역이 좁은 목(throat)을 통해 이어진 듯 보이는 공간 단면을 표현합니다. 격자와 빛 입자는 구조를 이해하기 위한 시각적 보조물입니다.</p>
+    </div>
+    <div class="info">
+      <h3>02 · 아인슈타인–로젠 다리</h3>
+      <p>1935년 아인슈타인과 로젠이 일반상대성이론의 해를 바탕으로 논의한 구조입니다. 흔히 웜홀의 초기 형태로 소개되지만, 고전적인 슈바르츠실트 해의 다리는 통과 가능한 통로가 아닙니다.</p>
+    </div>
+  </aside>
+</main>
+<div class="bottom">
+  <div class="note"><strong>중요한 물리적 한계</strong><br>
+  이 화면은 공간의 곡률을 직관적으로 보여주는 임베딩 다이어그램 기반의 개념 모형입니다. 실제 우주에서 관측된 로젠 다리의 사진이나 정확한 시간 진화를 계산하는 일반상대론 수치 시뮬레이션은 아닙니다. 특히 고전적인 아인슈타인–로젠 다리는 너무 빠르게 닫혀 외부 관찰자나 빛이 반대편으로 통과할 수 없습니다. 슬라이더는 실제 물리량 측정값이 아니라 시각화 매개변수입니다.</div>
+</div>
+<script>
+(()=>{
+const canvas=document.getElementById('space'),ctx=canvas.getContext('2d');
+const $=id=>document.getElementById(id);
+let W=0,H=0,dpr=1,rotX=-.72,rotY=.2,zoom=1,drag=null,paused=false,t=0;
+let throat=1,curve=1,speed=1;
+function resize(){const r=canvas.getBoundingClientRect();dpr=Math.min(devicePixelRatio||1,2);W=r.width;H=r.height;canvas.width=W*dpr;canvas.height=H*dpr;ctx.setTransform(dpr,0,0,dpr,0,0)}
+new ResizeObserver(resize).observe(canvas);resize();
+function project(x,y,z){
+ let cy=Math.cos(rotY),sy=Math.sin(rotY),cx=Math.cos(rotX),sx=Math.sin(rotX);
+ let x1=x*cy-z*sy,z1=x*sy+z*cy,y1=y*cx-z1*sx,z2=y*sx+z1*cx;
+ let f=510*zoom/(510+z2*62);
+ return [W/2+x1*72*f,H/2+y1*72*f,z2,f];
+}
+function surface(u,v,side){
+ // Flared embedding surface: r = sqrt(u^2 + throat^2), z = +/- 2*sqrt(throat)*asinh(|u|/throat)
+ let r=Math.sqrt(u*u+throat*throat),a=v;
+ let x=r*Math.cos(a),y=r*Math.sin(a);
+ let z=side*curve*1.18*Math.asinh(Math.abs(u)/throat);
+ return [x,y,z];
+}
+function line3(points,color,width=1,alpha=1){
+ ctx.beginPath();let first=true;
+ for(const p of points){const q=project(...p);if(first){ctx.moveTo(q[0],q[1]);first=false}else ctx.lineTo(q[0],q[1])}
+ ctx.strokeStyle=color;ctx.globalAlpha=alpha;ctx.lineWidth=width;ctx.stroke();ctx.globalAlpha=1;
+}
+function draw(){
+ ctx.clearRect(0,0,W,H);
+ const bg=ctx.createRadialGradient(W*.5,H*.46,10,W*.5,H*.5,Math.max(W,H)*.7);bg.addColorStop(0,'#15264a');bg.addColorStop(1,'#070b18');ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
+ // stars
+ for(let i=0;i<95;i++){let x=(i*127.13%W),y=(i*71.7%H);ctx.fillStyle=`rgba(190,215,255,${.15+(i%5)*.08})`;ctx.fillRect(x,y,1.2,1.2)}
+ // two curved sheets, wireframe
+ for(const side of [-1,1]){
+   const col=side===1?'#65dfff':'#b99cff';
+   for(let ui=0;ui<=24;ui++){
+     let u=-3.2+ui*(6.4/24),pts=[];
+     for(let j=0;j<=90;j++){let v=j/90*Math.PI*2;pts.push(surface(u,v,side))}
+     line3(pts,col,.7,.24);
+   }
+   for(let j=0;j<18;j++){
+     let v=j/18*Math.PI*2,pts=[];
+     for(let i=0;i<=55;i++){let u=-3.2+i*(6.4/55);pts.push(surface(u,v,side))}
+     line3(pts,col,.85,.38);
+   }
+ }
+ // glowing throat ring
+ for(let k=0;k<3;k++){
+  let pts=[];for(let j=0;j<=100;j++){let a=j/100*Math.PI*2;pts.push([throat*Math.cos(a),throat*Math.sin(a),0])}
+  line3(pts,k===0?'#ffe2a0':'#ffc86e',k===0?2.2:5,.55-k*.12);
+ }
+ // mouth labels
+ const p1=project(0,0,curve*1.18*Math.asinh(2.7/throat));
+ const p2=project(0,0,-curve*1.18*Math.asinh(2.7/throat));
+ ctx.font='11px -apple-system, sans-serif';ctx.textAlign='center';
+ ctx.fillStyle='#8feaff';ctx.fillText('UNIVERSE A',p1[0],p1[1]-24);
+ ctx.fillStyle='#c7aaff';ctx.fillText('UNIVERSE B',p2[0],p2[1]+25);
+ // animated illustrative lightlike markers along throat surface, not physical trajectories
+ for(let n=0;n<7;n++){
+  let phase=(t*speed*.18+n/7)%1,u=-2.8+phase*5.6,ang=n*2.399+t*.22;
+  let side=n%2?1:-1,p=project(...surface(u,ang,side));
+  ctx.beginPath();ctx.arc(p[0],p[1],2.1+(n%3),0,Math.PI*2);ctx.fillStyle=n%2?'#bca4ff':'#a7f1ff';ctx.shadowBlur=12;ctx.shadowColor=ctx.fillStyle;ctx.fill();ctx.shadowBlur=0;
+ }
+ // center label
+ const c=project(0,0,0);ctx.fillStyle='#ffe1a0';ctx.font='bold 11px -apple-system,sans-serif';ctx.fillText('THROAT',c[0],c[1]-13);
+ if(!paused)t+=.016;
+ requestAnimationFrame(draw);
+}
+draw();
+canvas.addEventListener('pointerdown',e=>{drag={x:e.clientX,y:e.clientY,id:e.pointerId};canvas.setPointerCapture(e.pointerId)});
+canvas.addEventListener('pointermove',e=>{if(!drag)return;let dx=e.clientX-drag.x,dy=e.clientY-drag.y;rotY+=dx*.008;rotX=Math.max(-1.45,Math.min(1.45,rotX+dy*.008));drag.x=e.clientX;drag.y=e.clientY});
+canvas.addEventListener('pointerup',()=>drag=null);canvas.addEventListener('pointercancel',()=>drag=null);
+canvas.addEventListener('wheel',e=>{e.preventDefault();zoom=Math.max(.55,Math.min(1.8,zoom-e.deltaY*.001))},{passive:false});
+$('throat').addEventListener('input',e=>{throat=+e.target.value;$('throatVal').textContent=throat.toFixed(2)});
+$('curve').addEventListener('input',e=>{curve=+e.target.value;$('curveVal').textContent=curve.toFixed(2)});
+$('speed').addEventListener('input',e=>{speed=+e.target.value;$('speedVal').textContent=speed.toFixed(1)+'×'});
+$('toggle').addEventListener('click',()=>{paused=!paused;$('toggle').textContent=paused?'재생':'일시정지'});
+$('reset').addEventListener('click',()=>{rotX=-.72;rotY=.2;zoom=1});
+})();
+</script>
+</body>
+</html>
